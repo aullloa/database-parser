@@ -1,7 +1,11 @@
 import argparse
-import csv
 import pandas as pd
-import pymongo
+from pymongo import MongoClient
+
+#Create connection with MongoDB
+client = MongoClient('localhost', 27017)
+database = client["qa_logs"]
+collection = database["EGSpring"]
 
 parser = argparse.ArgumentParser()
 
@@ -18,6 +22,9 @@ args = parser.parse_args()
 
 try:
     df = pd.read_excel(args.file)
+    data = df.to_dict('records')
+    collection.insert_many(data)
+    print("Successfully inserted data into database")
     if args.verbose:
         print(df.to_string(index=False))
     print("File imported!")
