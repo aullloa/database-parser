@@ -13,15 +13,16 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--file", action="store", required=False, help="Input file to create database")
 parser.add_argument("--verbose", action="store_true", help="Verbose output")
 parser.add_argument("--user",action="store", help=" Get a report of a specified user")
-parser.add_argument("-rbugs", action="store_true", help="Lists all repeatable bugs")
-parser.add_argument("-bbugs", action="store_true", help="Lists all blocker bugs")
-parser.add_argument("-RBbugs", action="store_true", help="Lists all repeatable and blocker bugs")
-parser.add_argument("-date", action="store_true", help="Lists all reports on build 2/24/2024")
+parser.add_argument("--repeat", action="store_true", help="Lists all repeatable bugs")
+parser.add_argument("--blocker", action="store_true", help="Lists all blocker bugs")
+parser.add_argument("--rb", action="store_true", help="Lists all repeatable and blocker bugs")
+parser.add_argument("--date", action="store", help="Lists all reports on given buikld date")
 
 args = parser.parse_args()
 
 all_data = []
 data_tracker = set()
+flag_query = []
 
 try:
 
@@ -62,6 +63,9 @@ try:
 
     #  Database Calls
     # Need to modify to take in a string as an input
+    if args.verbose:
+        print(df.to_string(index=False))
+
     if args.user:
         report = collection.find({"Test Owner": "Kevin Chaja"})
         print(f"Successfully found all of Kevin's entries in {collection_name} database")
@@ -72,8 +76,27 @@ try:
         for r in report:
             r.to_excel(export_file)
 
-    if args.verbose:
-        print(df.to_string(index=False))
+    if args.repeat:
+        for r in all_data:
+            if r["Repeatable?"] == "Yes":
+                print(r)
+                #flag_query.append(r)
+            #print(flag_query)
+
+    if args.blocker:
+        for r in all_data:
+            if r["Blocker?"] == "Yes":
+                print(r)
+
+    if args.rb:
+        for r in all_data:
+            if r["Repeatable?"] == "Yes" and r["Blocker?"] == "Yes":
+                print(r)
+
+    if args.date:
+        for r in all_data:
+            if r["Date?"] == args.date:
+                print(r)
 
 except FileNotFoundError:
     print("File not found")
