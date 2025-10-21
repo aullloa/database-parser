@@ -1,6 +1,5 @@
 import argparse
 import sys
-import csv
 import pandas as pd
 from pymongo import MongoClient
 import os
@@ -55,12 +54,11 @@ try:
                 data_tracker.add(key)
                 all_data.append(row)
 
-        #DEBUG: to check data has no duplicates
-        with open("no_dupes.csv", "w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames = all_data[0].keys())
-            writer.writeheader()
-            writer.writerows(all_data)
-        # END DEBUG
+    #DEBUG: to check data has no duplicates
+    df = pd.DataFrame(all_data)
+    df.to_excel("no_dupes.xlsx", index=False)
+    print("No dupe data exported to no_dupes.xlsx")
+    # END DEBUG
 
     #  Database Calls
     # Need to modify to take in a string as an input
