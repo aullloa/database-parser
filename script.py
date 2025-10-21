@@ -1,8 +1,7 @@
 import argparse
 import sys
-
+import csv
 import pandas as pd
-from pandas import ExcelWriter
 from pymongo import MongoClient
 import os
 
@@ -23,6 +22,7 @@ parser.add_argument("-date", action="store_true", help="Lists all reports on bui
 args = parser.parse_args()
 
 all_data = []
+data_tracker = set()
 
 try:
 
@@ -47,12 +47,20 @@ try:
 
 
     list_of_tables = database.list_collection_names();
-    for table in list_of_tables:
+    for table in database.list_collection_names():
         collection = database[table]
-        print("Contents:")
         for row in collection.find({}):
-            all_data.append(row)
-        print(all_data)
+            key = (row["Test Owner"], row["Test Case"], row["Actual Result"])
+            if key not in data_tracker:
+                data_tracker.add(key)
+                all_data.append(row)
+
+        #DEBUG: to check data has no duplicates
+        with open("no_dupes.csv", "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames = all_data[0].keys())
+            writer.writeheader()
+            writer.writerows(all_data)
+        # END DEBUG
 
     #  Database Calls
     # Need to modify to take in a string as an input
