@@ -1,9 +1,8 @@
 import argparse
 import sys
 import pandas as pd
-from pymongo import MongoClient
+from pymongo import MongoClient, errors
 import os
-
 
 parser = argparse.ArgumentParser()
 
@@ -23,7 +22,6 @@ args = parser.parse_args()
 
 all_data = []
 data_tracker = set()
-flag_query = []
 
 try:
 
@@ -35,10 +33,20 @@ try:
     if args.file:
         df = pd.read_excel(args.file)
 
-        # This handles creating and accessing correct database based on which file is passed through
+        # This handles creating and accessing correct database
+        # based on which file is passed through
         filename = os.path.basename(args.file)
         collection_name = filename.split(".")[0]
         collection = database[collection_name]
+
+        # text casing is lowered
+        for col in df.columns:
+            df[col] = df[col].astype(str).str.lower()
+
+        # Standardize the date formats
+        if "Build #" in df.columns:
+            df["Build #"] = pd.to_datetime(df["Build #"], errors="coerce")
+            df["Build #"] = df["Build #"].dt.strftime("%m/%d/%Y")
 
         # Insert data to collection
         data = df.to_dict('records')
@@ -46,8 +54,6 @@ try:
         print(f"Successfully inserted data into {collection_name} collection")
         sys.exit(0)
 
-    # Need to add further checks to catch incorrect data  e.g. incorrect data format, inconsistent data in wrong columns
-    # Date: need to convert to readable data
     list_of_tables = database.list_collection_names()
     for table in database.list_collection_names():
         collection = database[table]
@@ -58,6 +64,7 @@ try:
                 all_data.append(row)
 
     df = pd.DataFrame(all_data)
+
     #DEBUG: to check data has no duplicates
     if args.debug:
         df.to_excel("no_dupes.xlsx", index=False)
@@ -65,27 +72,25 @@ try:
     # END DEBUG
 
     #  Database Calls
-    # Need to modify to take in a string as an input
     if args.verbose:
         print(df.to_string(index=False))
 
     if args.user:
-        username = args.user
+        username = args.user.lower().strip()
         report = df[df["Test Owner"] == username]
         print(f"Successfully found all of {username}'s entries in database")
         try:
-            export_file = open(f"{username}-work.xlsx", "wb")
+            export_file = open(f"{username}-work.csv", "wb")
         except FileNotFoundError:
             print("File not found")
-        report.to_excel(export_file)
-        print(f"Successfully exported to {username}-work.xlsx")
+            sys.exit(0)
+        report.to_csv(export_file)
+        print(f"Successfully exported to {username}-work.csv")
 
     if args.repeat:
         for r in all_data:
             if r["Repeatable?"] == "Yes":
                 print(r)
-                #flag_query.append(r)
-            #print(flag_query)
 
     if args.blocker:
         for r in all_data:
@@ -105,5 +110,11 @@ try:
 except FileNotFoundError:
     print("File not found")
     exit(1)
+except errors.ConnectionFailure:
+    print("Connection failed with database(Is the database running?)")
+    exit(1)
+
+
+
 
 
