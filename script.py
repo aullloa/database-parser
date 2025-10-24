@@ -1,4 +1,5 @@
 import argparse
+import random
 import sys
 import pandas as pd
 from pymongo import MongoClient, errors
@@ -15,13 +16,27 @@ parser.add_argument("--user",action="store", help="Get a report of a specified u
 parser.add_argument("--repeat", action="store_true", help="Lists all repeatable bugs")
 parser.add_argument("--blocker", action="store_true", help="Lists all blocker bugs")
 parser.add_argument("--rb", action="store_true", help="Lists all repeatable and blocker bugs")
-parser.add_argument("--date", action="store", help="Lists all reports on given build date")
+parser.add_argument("--date",type=str, action="store", help="Lists all reports on given build date")
 parser.add_argument("--debug", action="store_true", help="Debug mode")
 
 args = parser.parse_args()
 
 all_data = []
+results = []
 data_tracker = set()
+
+def baking_the_cake(text, filename="baking_the_cake.txt"):
+    output_messages = (
+        "Adding sweet cream to the cake...",
+        "Mixing the flour with the eggs...",
+        "Preheating the oven to 467°F...",
+        "Frosting the edges..."
+    )
+    message = random.choice(output_messages)
+    print(message)
+    with open(filename, "a") as file:
+        file.write(message + "\n")
+        file.write(str(text) + "\n")
 
 try:
 
@@ -43,6 +58,7 @@ try:
         for col in df.columns:
             df[col] = df[col].astype(str).str.lower()
 
+
         # Standardize the date formats
         if "Build #" in df.columns:
             df["Build #"] = pd.to_datetime(df["Build #"], errors="coerce")
@@ -51,7 +67,7 @@ try:
         # Insert data to collection
         data = df.to_dict('records')
         collection.insert_many(data)
-        print(f"Successfully inserted data into {collection_name} collection")
+        baking_the_cake(f"Successfully inserted data into {collection_name} collection")
         sys.exit(0)
 
     list_of_tables = database.list_collection_names()
@@ -75,10 +91,11 @@ try:
     if args.verbose:
         print(df.to_string(index=False))
 
+
     if args.user:
         username = args.user.lower().strip()
         report = df[df["Test Owner"] == username]
-        print(f"Successfully found all of {username}'s entries in database")
+        baking_the_cake(f"Successfully found all of {username}'s entries in database")
         try:
             export_file = open(f"{username}-work.csv", "wb")
         except FileNotFoundError:
@@ -90,22 +107,32 @@ try:
     if args.repeat:
         for r in all_data:
             if r["Repeatable?"] == "Yes":
-                print(r)
+                results.append(f"{r}\n")
+        baking_the_cake(results)
+
 
     if args.blocker:
         for r in all_data:
             if r["Blocker?"] == "Yes":
-                print(r)
+                results.append(f"{r}\n")
+        baking_the_cake(results)
 
     if args.rb:
         for r in all_data:
             if r["Repeatable?"] == "Yes" and r["Blocker?"] == "Yes":
-                print(r)
+                results.append(f"{r}\n")
+        baking_the_cake(results)
 
     if args.date:
+        try:
+            date = pd.to_datetime(args.date).strftime("%m/%d/%Y")
+        except ValueError:
+            print("Invalid date. Make sure date is in the format MM/DD/YYYY")
+            sys.exit(1)
         for r in all_data:
-            if r["Date?"] == args.date:
-                print(r)
+            if r["Build #"] == date:
+                results.append(f"{r}\n")
+        baking_the_cake(results)
 
 except FileNotFoundError:
     print("File not found")
@@ -113,8 +140,6 @@ except FileNotFoundError:
 except errors.ConnectionFailure:
     print("Connection failed with database(Is the database running?)")
     exit(1)
-
-
 
 
 
