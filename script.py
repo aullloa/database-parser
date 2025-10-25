@@ -1,7 +1,6 @@
 import argparse
 import random
 import sys
-import csv
 import pandas as pd
 from pymongo import MongoClient, errors
 import os
@@ -38,7 +37,6 @@ def baking_the_cake(data, flag_type, filename="baking_the_cake.csv"):
     message = random.choice(output_messages)
     print(message.upper())
 
-
     with open(filename, "a", newline="") as file:
         file.write("\n")
         file.write("$" * 50 + "\n")
@@ -47,9 +45,7 @@ def baking_the_cake(data, flag_type, filename="baking_the_cake.csv"):
         file.write("$" * 50 + "\n")
         data.to_csv(file, index=False)
 
-
 try:
-
     # Connecting to db
     client = MongoClient('localhost', 27017)
     database = client["qa_logs"]
@@ -67,7 +63,6 @@ try:
         # text casing is lowered
         for col in df.columns:
             df[col] = df[col].astype(str).str.lower()
-
 
         # Standardize the date formats
         if "Build #" in df.columns:
@@ -91,12 +86,6 @@ try:
                 all_data.append(row)
 
     df = pd.DataFrame(all_data)
-
-    #DEBUG: to check data has no duplicates
-    if args.debug:
-        df.to_excel("no_dupes.xlsx", index=False)
-        print("no_dupes.xlsx created")
-    # END DEBUG
 
     #  Database Calls
     if args.verbose:
@@ -122,7 +111,6 @@ try:
             if any(option in r["Repeatable?"] for option in ("yes", "y"))]
         report = pd.DataFrame(results)
         baking_the_cake(report, "Repeatable Report")
-
 
     if args.blocker:
         results = [
@@ -157,6 +145,3 @@ except FileNotFoundError:
 except errors.ConnectionFailure:
     print("Connection failed with database(Is the database running?)")
     exit(1)
-
-
-
