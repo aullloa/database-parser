@@ -1,6 +1,7 @@
 import argparse
 import random
 import sys
+import csv
 import pandas as pd
 from pymongo import MongoClient, errors
 import os
@@ -25,18 +26,27 @@ all_data = []
 results = []
 data_tracker = set()
 
-def baking_the_cake(text, filename="baking_the_cake.txt"):
+def baking_the_cake(data, flag_type, filename="baking_the_cake.csv"):
     output_messages = (
-        "Adding sweet cream to the cake...",
+        "Adding sweet delicious cream...",
         "Mixing the flour with the eggs...",
         "Preheating the oven to 467°F...",
-        "Frosting the edges..."
+        "Frosting the edges...",
+        "Adding sugar, spice, and everything nice...",
+        "Sprinkling the strawberries on top..."
     )
     message = random.choice(output_messages)
-    print(message)
-    with open(filename, "a") as file:
-        file.write(message + "\n")
-        file.write(str(text) + "\n")
+    print(message.upper())
+
+
+    with open(filename, "a", newline="") as file:
+        file.write("\n")
+        file.write("$" * 50 + "\n")
+        file.write(f"{flag_type.upper()}\n")
+        file.write(f"# {message.upper()}\n")
+        file.write("$" * 50 + "\n")
+        data.to_csv(file, index=False)
+
 
 try:
 
@@ -67,14 +77,15 @@ try:
         # Insert data to collection
         data = df.to_dict('records')
         collection.insert_many(data)
-        baking_the_cake(f"Successfully inserted data into {collection_name} collection")
+        print(f"Successfully inserted data into {collection_name}")
         sys.exit(0)
 
+    # Checking for duplicates based on the given columns
     list_of_tables = database.list_collection_names()
     for table in database.list_collection_names():
         collection = database[table]
         for row in collection.find({}):
-            key = (row["Test Owner"], row["Test Case"], row["Actual Result"])
+            key = (row["Test Case"], row["Test Owner"], row["Actual Result"])
             if key not in data_tracker:
                 data_tracker.add(key)
                 all_data.append(row)
@@ -91,37 +102,42 @@ try:
     if args.verbose:
         print(df.to_string(index=False))
 
-
     if args.user:
         username = args.user.lower().strip()
         report = df[df["Test Owner"] == username]
-        baking_the_cake(f"Successfully found all of {username}'s entries in database")
+        print(f"Successfully found all of {username}'s entries in database")
+        baking_the_cake(report, f"{username} Report")
         try:
-            export_file = open(f"{username}-work.csv", "wb")
+            export_file = open(f"{username}-report.csv", "wb")
         except FileNotFoundError:
             print("File not found")
             sys.exit(0)
+        report = report.drop(columns=["_id"])
         report.to_csv(export_file)
         print(f"Successfully exported to {username}-work.csv")
 
     if args.repeat:
-        for r in all_data:
-            if r["Repeatable?"] == "Yes":
-                results.append(f"{r}\n")
-        baking_the_cake(results)
+        results = [
+            r for r in all_data
+            if any(option in r["Repeatable?"] for option in ("yes", "y"))]
+        report = pd.DataFrame(results)
+        baking_the_cake(report, "Repeatable Report")
 
 
     if args.blocker:
-        for r in all_data:
-            if r["Blocker?"] == "Yes":
-                results.append(f"{r}\n")
-        baking_the_cake(results)
+        results = [
+            r for r in all_data
+            if any(option in r["Blocker?"] for option in ("yes", "y"))]
+        report = pd.DataFrame(results)
+        baking_the_cake(report, "Blocker Report")
 
     if args.rb:
-        for r in all_data:
-            if r["Repeatable?"] == "Yes" and r["Blocker?"] == "Yes":
-                results.append(f"{r}\n")
-        baking_the_cake(results)
+        results = [
+            r for r in all_data
+            if any(option in r["Repeatable?"] for option in ("yes", "y"))
+               and any(option in r["Blocker?"] for option in ("yes", "y"))]
+        report = pd.DataFrame(results)
+        baking_the_cake(report, "Repeatable and Blocker Report")
 
     if args.date:
         try:
@@ -129,10 +145,11 @@ try:
         except ValueError:
             print("Invalid date. Make sure date is in the format MM/DD/YYYY")
             sys.exit(1)
-        for r in all_data:
-            if r["Build #"] == date:
-                results.append(f"{r}\n")
-        baking_the_cake(results)
+        results = [
+            r for r in all_data
+            if r["Build #"] == date]
+        report = pd.DataFrame(results)
+        baking_the_cake(report, f"{date} Report")
 
 except FileNotFoundError:
     print("File not found")
