@@ -1,3 +1,9 @@
+# Alfredo Ulloa
+# COMP 467
+# Project 2
+# Script to parse data from a csv file and import to a db.
+# Uses argparse to perform different functions with data.
+
 import argparse
 import random
 import sys
